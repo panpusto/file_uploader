@@ -1,5 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.test import Client
+from django.urls import reverse
 
 
 @pytest.mark.django_db
@@ -22,3 +24,53 @@ class TestClassAccounts:
         assert superuser.is_staff == 1
         assert superuser.is_superuser == 1
         assert superuser.is_active == 1
+
+
+@pytest.fixture
+def client():
+    client = Client()
+    return client
+
+
+@pytest.mark.django_db
+class TestClassJSONWebToken:
+    def test_token_obtain_pair_view_with_get(self, client):
+        get_response = client.get(reverse('token_obtain_pair'))
+        assert get_response.status_code == 405
+
+    def test_token_obtain_pair_view_with_post(self, client):
+        get_user_model().objects.create_user(
+            email='test_user@email.com',
+            password='testpass123'
+        )
+        post_response = client.post(
+            reverse('token_obtain_pair'),
+            {
+                'email': 'test_user@email.com',
+                'password': 'testpass123'
+            })
+        assert post_response.status_code == 200
+    
+    def test_token_refresh_with_get(self, client):
+        get_response = client.get(reverse('token_refresh'))
+        assert get_response.status_code == 405
+    
+    def test_token_refresh_with_post(self, client):
+        get_user_model().objects.create_user(
+            email='test_user@email.com',
+            password='testpass123'
+        )
+        generate_token = client.post(
+            reverse('token_obtain_pair'),
+            {
+                'email': 'test_user@email.com',
+                'password': 'testpass123'
+            })
+        refresh_token = generate_token.json()['refresh']
+        post_response = client.post(
+            reverse('token_refresh'),
+            {
+                'refresh': refresh_token
+            }
+        )
+        assert post_response.status_code == 200
