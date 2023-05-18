@@ -92,3 +92,108 @@ class TestClassJSONWebToken:
             }
         )
         assert post_response.status_code == 401
+
+
+@pytest.mark.django_db
+class TestClassRegisterView:
+    def test_register_api_view_with_get(self, client):
+        get_response = client.get(reverse('register_user'))
+        assert get_response.status_code == 405
+
+    def test_register_api_view_with_post_correct_inputs(self, client):
+        post_response = client.post(
+            reverse('register_user'),
+            {
+                'email': 'test_user1@email.com',
+                'password': 'Testpass123!',
+                'password2': 'Testpass123!'
+            }
+        )
+        assert post_response.status_code == 201
+        assert post_response.json()['email'] == 'test_user1@email.com'
+    
+    def test_register_api_view_with_post_not_correct_email(self, client):
+        post_response = client.post(
+            reverse('register_user'),
+            {
+                'email': 'wrong_email.com',
+                'password': 'Testpass123!',
+                'password2': 'Testpass123!'
+            }
+        )
+        assert post_response.status_code == 400
+
+    def test_register_api_view_with_post_not_unique_email(self, client):
+        get_user_model().objects.create_user(
+            email='test_user@email.com',
+            password='testpass123'
+        )
+        post_response = client.post(
+            reverse('register_user'),
+            {
+                'email': 'test_user@email.com',
+                'password': 'Testpass123!',
+                'password2': 'Testpass123!'
+            }
+        )
+        assert post_response.status_code == 400
+        assert post_response.json()['email'] == ['Account with this email address already exists.']
+
+    def test_register_api_view_with_post_not_matched_passwords(self, client):
+        post_response = client.post(
+            reverse('register_user'),
+            {
+                'email': 'testuser@email.com',
+                'password': 'Testpass123!',
+                'password2': 'testpassword666'
+            }
+        )
+        assert post_response.status_code == 400
+    
+    def test_register_api_view_with_post_too_short_password(self, client):
+        post_response = client.post(
+            reverse('register_user'),
+            {
+                'email': 'testuser@email.com',
+                'password': 'te!1W',
+                'password2': 'te!1W'
+            }
+        )
+        assert post_response.status_code == 400
+        assert post_response.json()['password'] == ['This password is too short. It must contain at least 8 characters.']
+
+    def test_register_api_view_with_post_password_without_digit(self, client):
+        post_response = client.post(
+            reverse('register_user'),
+            {
+                'email': 'testuser@email.com',
+                'password': 'Testpass!',
+                'password2': 'Testpass!'
+            }
+        )
+        assert post_response.status_code == 400
+        assert post_response.json()['password'] == ['This password must contain any digit.']
+
+    def test_register_api_view_with_post_password_without_punctuation(self, client):
+        post_response = client.post(
+            reverse('register_user'),
+            {
+                'email': 'testuser@email.com',
+                'password': 'Testpass123',
+                'password2': 'Testpass123'
+            }
+        )
+        assert post_response.status_code == 400
+        assert post_response.json()['password'] == ['This password must contain any punctuation sign.']
+    
+    def test_register_api_view_with_post_password_without_uppercase(self, client):
+        post_response = client.post(
+            reverse('register_user'),
+            {
+                'email': 'testuser@email.com',
+                'password': 'testpass123!',
+                'password2': 'testpass123!'
+            }
+        )
+        assert post_response.status_code == 400
+        assert post_response.json()['password'] == ['This password must contain any uppercase.']
