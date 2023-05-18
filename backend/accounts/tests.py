@@ -38,7 +38,7 @@ class TestClassJSONWebToken:
         get_response = client.get(reverse('token_obtain_pair'))
         assert get_response.status_code == 405
 
-    def test_token_obtain_pair_view_with_post(self, client):
+    def test_token_obtain_pair_view_with_post_for_register_user(self, client):
         get_user_model().objects.create_user(
             email='test_user@email.com',
             password='testpass123'
@@ -51,11 +51,20 @@ class TestClassJSONWebToken:
             })
         assert post_response.status_code == 200
     
+    def test_token_obtain_pair_view_with_post_for_non_register_user(self, client):
+        post_response = client.post(
+            reverse('token_obtain_pair'),
+            {
+                'email': 'fake_user@email.com',
+                'password': 'testpass123'
+            })
+        assert post_response.status_code == 401
+
     def test_token_refresh_with_get(self, client):
         get_response = client.get(reverse('token_refresh'))
         assert get_response.status_code == 405
     
-    def test_token_refresh_with_post(self, client):
+    def test_token_refresh_with_post_for_correct_token(self, client):
         get_user_model().objects.create_user(
             email='test_user@email.com',
             password='testpass123'
@@ -74,3 +83,12 @@ class TestClassJSONWebToken:
             }
         )
         assert post_response.status_code == 200
+
+    def test_token_refresh_with_post_for_fake_token(self, client):
+        post_response = client.post(
+            reverse('token_refresh'),
+            {
+                'refresh': 'some424_)fake_##_token65540'
+            }
+        )
+        assert post_response.status_code == 401
