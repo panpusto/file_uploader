@@ -16,11 +16,13 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework_simplejwt import views as jwt_views
+
 
 urlpatterns = [
     # admin
     path('admin/', admin.site.urls),
     # accounts
     path('api/v1/accounts/', include('accounts.urls')),
+    # files 
+    path('api/v1/files/', include('files.urls')),
 ]
