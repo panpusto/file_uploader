@@ -3,33 +3,32 @@ from rest_framework import serializers
 from .models import File
 
 
-class FileUploadSerializer(serializers.ModelSerializer):
-    file = serializers.ListField(
-        child=serializers.FileField(max_length=100000,
-        allow_empty_file=False,
-        use_url=False
-    ))
-
+class FileCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = File
         fields = [
             'file'
         ]
+
+
+class FileUploadField(serializers.FileField):
+    def to_internal_value(self, data):
+        if not data:
+            return None
+        
+        max_size = 10 * 1024 * 1024 # 10MB
+
+        if data.size > max_size:
+            raise serializers.ValidationError('File size exceeds the limit.')
+        
+        return data
     
-    def create(self, validated_data):
-        file=validated_data.pop('file')
-        user=self.context['request'].user
-
-        file_list = []
-        for item in file:
-            f = File.objects.create(file=item, user=user)
-            f_url = f'{f.file.url}'
-            file_list.append(f_url)
-            
-        return file_list
+    def to_representation(self, value):
+        if not value:
+            return None
+        return value.url
 
 
-class FileUploadDisplaySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = File
-        fields = '__all__'
+class MultipleFileCreateSerializer(serializers.Serializer):
+    files = serializers.ListField(child=FileUploadField(write_only=True), write_only=True)
+    download_links = serializers.ListField(child=serializers.URLField(), read_only=True)

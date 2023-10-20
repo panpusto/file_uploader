@@ -1,36 +1,29 @@
-from rest_framework import generics
-from rest_framework.permissions import AllowAny
+from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework import status
-
-import requests
-
 from .models import File
-from .serializers import (
-    FileUploadDisplaySerializer,
-    FileUploadSerializer,
-)
+from .serializers import MultipleFileCreateSerializer
 
 
-class FileUploadView(generics.CreateAPIView):
-    permission_classes = [AllowAny] # change it later
-    serializer_class = FileUploadDisplaySerializer
+class FileCreateAPIView(generics.CreateAPIView):
+    serializer_class = MultipleFileCreateSerializer
 
-    def post(self, request, format=None):
-        serializer = FileUploadSerializer(
-            data=request.data, 
-            context={'request': request})
-
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            query_set = serializer.save()
-            data = {"files": query_set}
-            return Response(data, status=status.HTTP_201_CREATED)
-        else:
-            data = {"detail": serializer.errors}
-            return Response(data, status=status.HTTP_400_BAD_REQUEST)
+            files = serializer.validated_data['files']
+            download_links = []
+            base_url = request.build_absolute_uri('/')
 
-    def get_queryset(self):
-        return File.objects.filter(user=self.request.user)
+
+            for file in files:
+                file_instance = File(user=request.user, file=file)
+                file_instance.save()
+
+                download_links.append(base_url + file_instance.file.url.lstrip('/'))
+            
+            return Response({'download_links': download_links}, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def perform_create(self, serializer):
         return serializer.save(user=self.request.user)

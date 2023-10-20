@@ -2,16 +2,22 @@ version: '3.9'
 
 services:
   backend:
+    container_name: file_uploader_backend
+    restart: always
     build:
       context: ./backend
     command: python /backend/manage.py runserver 0.0.0.0:8000
     ports:
       - 8000:8000
+    volumes:
+      - ./backend:/backend
     depends_on:
       - database
   
   database:
     image: postgres:14
+    container_name: file_uploader_db
+    restart: always
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
